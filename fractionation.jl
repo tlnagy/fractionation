@@ -16,9 +16,9 @@ end
 home = (x = 92, y = 175, z = 29)
 well_spacing = 9.0 # in microns
 
+# let 3D printer initialize, it reboots when we setup the serial connection 
 sp = LibSerialPort.open(portname, baudrate)
-
-sleep(5) # let 3D printer initialize
+sleep(6) 
 
 try
     write(sp, "G1 Z$(home.z)\n")
