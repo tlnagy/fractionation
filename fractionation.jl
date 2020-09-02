@@ -4,21 +4,23 @@ using LibSerialPort
 include("utils.jl")
 
 portname = LibSerialPort.get_port_list()[1]
-baudrate = 115_200
+baudrate = 115_200 # Creality Ender 3D uses a non standard baud rate
 
 origin = Point(0, 0, 55, "origin")
 plate = Point(125, 152, 29, "plate top left")
 waste = Point(65, plate.y, 55, "waste container")
 
-well_spacing = 9.0 # in microns
+well_spacing = 9.0 # in millimeters
 
 # let 3D printer initialize, it reboots when we setup the serial connection 
 sp = LibSerialPort.open(portname, baudrate)
 sleep(7) 
 
+# move head up and calibrate the origin
 write(sp, "G1 Z55\n")
 write(sp, "G28\n")
 
+# raise head and waite, this is useful for priming the lines
 moveto(sp, origin; wait=true)
 
 for row in 1:3:8
