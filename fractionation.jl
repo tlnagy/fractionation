@@ -1,5 +1,6 @@
 using Dates
 using LibSerialPort
+using SnakeIterator
 
 include("utils.jl")
 
@@ -10,8 +11,6 @@ origin = Point(0, 0, 55, "origin")
 plate = Point(125, 152, 29, "plate top left")
 waste = Point(65, plate.y, 55, "waste container")
 
-well_spacing = 9.0 # in millimeters
-
 # let 3D printer initialize, it reboots when we setup the serial connection 
 sp = LibSerialPort.open(portname, baudrate)
 sleep(7) 
@@ -20,57 +19,32 @@ sleep(7)
 write(sp, "G1 Z55\n")
 write(sp, "G28\n")
 
-# raise head and waite, this is useful for priming the lines
+# raise head and wait, this is useful for priming the lines
 moveto(sp, origin; wait=true)
 
-for row in 1:3:8
+wells = create_wells(plate, well_spacing = 9.0, well_depth = 11.0)
 
-    y_loc = plate.y - (row - 1) * well_spacing
+groups = [wells[:, 1:3]]
 
-    write(sp, "G1 X$(plate.x) Y$(y_loc)\n")
-    write(sp, "G1 Z$(plate.z)\n")
+moveto(sp, plate)
+wait_for_key("start flow now, press any key")
 
-    wait_for_key("start flow now, press any key")
+waste_start = now()
+moveto(sp, waste; wait = true)
+waste_stop = now()
+println("$(waste_stop - waste_start)")
 
-    waste_start = now()
-    moveto(sp, waste; wait = true)
-    waste_stop = now()
-    println("$(waste_stop - waste_start)")
-    
-    write(sp, "G1 X$(plate.x) Y$(plate.y)\n")
-    sleep(3)
+start_pos = first(groups[1])
+start_pos = Point(start_pos.x, start_pos.y, "Start pos")
+moveto(sp, start_pos)
+sleep(3)
 
-    for subrow in 0:2
-
-        cols = 1:12
-        if subrow == 1
-            println("Flipping... row #$(row+subrow)")
-            cols = 12:-1:1
-        end
-
-        y_loc = plate.y - (row - 1 + subrow) * well_spacing
-
-        write(sp, "G1 Z$(plate.z)\n")
-        write(sp, "G1 Y$(y_loc)\n")
-
-        for column in cols
-
-            loc = (
-                x = plate.x + (column - 1) * well_spacing, 
-                y = y_loc,
-                z = 18
-            )
-            println(loc)
-            write(sp, "G1 Z$(plate.z)\n")
-            write(sp, "G1 X$(loc.x)\n")
-            write(sp, "G1 Z$(loc.z)\n")
-            readline(sp)
-            write(sp, "M400\n")
-            readline(sp)
-            sleep(7.5)
-        end
-    end
-
-    moveto(sp, waste)
-    sleep(100)
+# visit each well in a group in a snaking pattern
+for well in snake(groups[1])
+    println(well.name)
+    moveto(sp, well; safe_height=plate.z)
+    sleep(7.5)
 end
+
+moveto(sp, waste)
+sleep(100)
