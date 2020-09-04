@@ -11,7 +11,7 @@ function moveto(sp, point::Point; safe_height=55, wait=false)
     println("Moving to $(point.name)")
     write(sp, "G1 Z$(safe_height)\n")
     write(sp, "G1 X$(point.x) Y$(point.y)\n")
-    (!isnothing(z)) && write(sp, "G1 Z$(point.z)\n")
+    (!isnothing(point.z)) && write(sp, "G1 Z$(point.z)\n")
 
     wait && wait_for_key("press any key to continue")
 end
@@ -23,8 +23,8 @@ function create_wells(topleft; well_spacing = 9.0, well_depth = 11.0)
 
     for I in CartesianIndices(well_names)
         wells[I] = Point(
-            plate.x + well_spacing * (I[1] - 1),
-            plate.y + well_spacing * (I[2] - 1),
+            plate.x + well_spacing * (I[2] - 1),
+            plate.y - well_spacing * (I[1] - 1),
             plate.z - well_depth,
             well_names[I]
         )
