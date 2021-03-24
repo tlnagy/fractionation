@@ -16,6 +16,7 @@ sp = LibSerialPort.open(portname, baudrate)
 sleep(7) 
 
 # move head up and calibrate the origin
+
 write(sp, "G1 Z55\n")
 write(sp, "G28\n")
 
@@ -24,27 +25,37 @@ moveto(sp, origin; wait=true)
 
 wells = create_wells(plate, well_spacing = 9.0, well_depth = 11.0)
 
-groups = [wells[:, 1:3]]
+groups = [
+    wells[:, 1:6], 
+    wells[:, 7:12]
+    ]
 
-moveto(sp, plate)
-wait_for_key("start flow now, press any key")
+for group in groups
+    println("Fractionating first tube")
 
-waste_start = now()
-moveto(sp, waste; wait = true)
-waste_stop = now()
-println("$(waste_stop - waste_start)")
+    moveto(sp, plate)
+    wait_for_key("start flow now, press any key")
 
-start_pos = first(groups[1])
-start_pos = Point(start_pos.x, start_pos.y, "Start pos")
-moveto(sp, start_pos)
-sleep(3)
+    waste_start = now()
+    moveto(sp, waste; wait = true)
+    waste_stop = now()
+    println("$(waste_stop - waste_start)")
 
-# visit each well in a group in a snaking pattern
-for well in snake(groups[1])
-    println(well.name)
-    moveto(sp, well; safe_height=plate.z)
-    sleep(7.5)
+    start_pos = first(group)
+    start_pos = Point(start_pos.x, start_pos.y, "Start pos")
+    moveto(sp, start_pos)
+    sleep(2)
+
+    prev_pos = start_pos
+
+    # visit each well in a group in a snaking pattern
+    for well in snake(group)
+        println(well.name)
+        moveto(sp, well; safe_height=plate.z)
+        sleep(13)
+        prev_pos = well
+    end
+
+    moveto(sp, Point(prev_pos.x, prev_pos.y + 9, waste.z*1.0, "outside"))
+    moveto(sp, waste; wait=true)
 end
-
-moveto(sp, waste)
-sleep(100)
